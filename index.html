@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget Gap Fixer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a newspaper graphics desk explaining the federal budget
+   IDEA the federal ledger: money out against money in, the gap marked in red
+   PICTURE two stacked bars, spending and revenue, that shrink and grow with each choice
+   COLOUR white ground, ink #121212, red #e3120b for the gap, slate #2e6f8e for new revenue, pale #e3ecf0 panels
+   TYPE Source Serif 4 display + Inter
+   LAYOUT title and live gap figure across the top, bars full width, sticky readout, option panels in two columns; one column on phones */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#10191e);--ink:light-dark(#121212,#e8eef1);--mute:light-dark(#56616a,#9fb0ba);--red:light-dark(#e3120b,#ff5247);--slate:light-dark(#2e6f8e,#5db1d8);--pale:light-dark(#e3ecf0,#1a2a32);--rule:light-dark(#c9d4d9,#2d3f48)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,4vw,48px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1,h2{font-family:"Source Serif 4",Georgia,serif;letter-spacing:-.02em;line-height:1.05;margin:0}
+h1{font-size:clamp(34px,5vw,52px);text-wrap:balance}
+h2{font-size:24px;margin-bottom:4px}
+.tab{display:inline-block;width:44px;height:8px;background:var(--red);margin-bottom:14px}
+.head{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:24px;align-items:end}
+.dek{color:var(--mute);margin:12px 0 0;max-width:62ch}
+.big{text-align:right}
+.big b{display:block;font:700 clamp(44px,7vw,72px)/1 "Source Serif 4",Georgia,serif;letter-spacing:-.02em;color:var(--red);white-space:nowrap}
+.big b.ok{color:var(--slate)}
+.big span{color:var(--mute)}
+.chart{margin-top:28px}
+.row{display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:12px;align-items:center;margin-top:14px}
+.rl b{display:block}.rl span{color:var(--mute);font-size:14px;white-space:nowrap}
+.track{display:flex;height:46px;transition:none}
+.track div{height:100%;border-right:2px solid var(--bg);transition:width .35s ease}
+.cut{background:repeating-linear-gradient(135deg,var(--rule) 0 4px,transparent 4px 9px);outline:1px dashed var(--mute);outline-offset:-1px}
+.gap{background:repeating-linear-gradient(135deg,var(--red) 0 6px,color-mix(in srgb,var(--red) 30%,var(--bg)) 6px 12px)}
+.axis{position:relative;height:22px;margin-left:calc(7.5em + 12px);border-top:1px solid var(--rule);font-size:13px;color:var(--mute)}
+.axis span{position:absolute;top:3px;transform:translateX(-50%);white-space:nowrap}
+.axis span:first-child{transform:none}
+.leg{display:flex;flex-wrap:wrap;gap:4px 16px;margin:6px 0 0 calc(7.5em + 12px);font-size:14px;color:var(--mute)}
+.leg i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px}
+.leg b{color:var(--ink);font-weight:600;white-space:nowrap}
+#strip{position:sticky;top:0;z-index:5;background:var(--bg);border-block:1px solid var(--rule);padding:10px max(5vw,16px)}
+.si{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;justify-content:space-between}
+.sum{font-size:15px}.sum b{font-size:18px}
+.meter{height:6px;background:var(--pale);margin-top:8px;max-width:1240px;margin-inline:auto}
+.meter div{height:100%;background:var(--slate);width:0;transition:width .35s ease}
+.seg{display:flex;border:1px solid var(--ink);border-radius:4px;overflow:hidden}
+.seg button,.pre button,.copy{font:600 14px Inter,sans-serif;min-height:40px;padding:0 14px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--slate);outline-offset:2px}
+.pre{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pre button,.copy{border:1px solid var(--rule);border-radius:4px;background:var(--bg)}
+.pre button:hover,.copy:hover{border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px 20px;color:var(--mute);font-size:14px;margin-top:14px}
+.chips b{color:var(--ink);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.panel{background:var(--pale);padding:20px;border-radius:4px}
+.panel>p{margin:0 0 8px;color:var(--mute);font-size:14px}
+.opt{display:block;border-top:1px solid var(--rule);padding:12px 0}
+.ol{display:flex;gap:10px;align-items:baseline;justify-content:space-between;font-weight:600}
+.ol .v{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--slate)}
+.opt.on .v{color:var(--ink)}
+.chk{display:grid;grid-template-columns:28px minmax(0,1fr);gap:0 8px;cursor:pointer}
+.chk input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--slate)}
+.note{display:block;font-size:13px;color:var(--mute);font-weight:400;margin-top:2px;grid-column:2}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:36px;background:transparent;margin:4px 0 0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:var(--rule);border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--slate);border:3px solid var(--bg);margin-top:-9px;box-shadow:0 0 0 1px var(--slate)}
+input[type=range]::-moz-range-track{height:6px;background:var(--rule);border-radius:3px}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--slate);border:3px solid var(--bg)}
+.radio{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.radio label{cursor:pointer}
+.radio input{position:absolute;opacity:0}
+.radio span{display:inline-block;padding:8px 12px;border:1px solid var(--rule);border-radius:4px;background:var(--bg);font-size:14px;font-weight:500}
+.radio input:checked+span{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.radio input:focus-visible+span{outline:3px solid var(--slate)}
+.debt{margin-top:12px;padding:14px;background:var(--bg);border-left:4px solid var(--red);font-size:15px}
+.debt b{white-space:nowrap}
+.flag{color:var(--red);font-weight:600}
+details{margin-top:8px}summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.src{columns:2 280px;font-size:14px;color:var(--mute);padding-left:18px}
+.src a{color:var(--slate)}
+.foot{font-size:14px;color:var(--mute);max-width:75ch}
+@media(max-width:800px){.head{grid-template-columns:minmax(0,1fr)}.big{text-align:left}.grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:520px){.row{grid-template-columns:minmax(0,1fr);gap:4px}.axis,.leg{margin-left:0}.track{height:38px}}
+@media(prefers-reduced-motion:reduce){.track div,.meter div{transition:none}}
+</style></head><body>
+<section class="band"><div class="wrap">
+  <div class="head">
+    <div><span class="tab"></span><h1>Close the $2 trillion gap</h1>
+    <p class="dek">In fiscal 2026 Washington spent $7.40 trillion and collected $5.40 trillion. Pick spending cuts and tax increases below, from mainstream budget options to the extreme ones, and watch the gap.</p></div>
+    <div class="big"><b id="big"></b><span id="bigL"></span></div>
+  </div>
+  <div class="chart">
+    <div class="row"><div class="rl"><b>Spending</b><span id="outT"></span></div><div class="track" id="outBar"></div></div>
+    <div class="leg" id="outLeg"></div>
+    <div class="row"><div class="rl"><b>Revenue</b><span id="revT"></span></div><div class="track" id="revBar"></div></div>
+    <div class="leg" id="revLeg"></div>
+    <div class="axis" id="axis"></div>
+  </div>
+  <div class="chips" id="chips"></div>
+</div></section>
+<div id="strip"><div class="si">
+  <div class="sum"><b id="sGap"></b> <span id="sPct"></span></div>
+  <div class="seg" role="group" aria-label="Estimate type"><button id="mPaper" data-m="paper">Paper math</button><button id="mReal" data-m="real">Realistic</button></div>
+</div><div class="meter"><div id="meter"></div></div></div>
+<section class="band"><div class="wrap">
+  <div class="pre" id="pre"><button data-p="trad">Mainstream mix</button><button data-p="cuts">Cuts only</button><button data-p="taxes">Taxes only</button><button data-p="wild">Extreme ideas</button><button data-p="none">Reset</button><button class="copy" id="copy">Copy my plan</button></div>
+  <p class="foot" id="modeNote"></p>
+  <div class="grid">
+    <div class="panel" id="g-spend"><h2>Spending cuts</h2><p>Net interest ($1.14T) can’t be cut directly; it falls only if the debt does.</p></div>
+    <div class="panel" id="g-tax"><h2>Mainstream tax increases</h2><p>Mostly from CBO’s official list of deficit-reduction options.</p></div>
+    <div class="panel" id="g-wild"><h2>The extreme options</h2><p>Annual taxes far beyond anything in modern US history.</p></div>
+    <div class="panel" id="g-seize"><h2>One-time seizures</h2><p>These pay down the debt once. They don’t fix the yearly gap, except through lower interest.</p><div class="debt" id="debt"></div></div>
+  </div>
+  <details><summary>Sources and method</summary>
+  <p class="foot">Baseline: CBO’s fiscal 2026 actuals ($7,396B outlays, $5,403B receipts). Option values are rough annual averages, mostly CBO 10-year estimates divided by 10. “Realistic” applies simple behavioral assumptions noted under each item: people work, report, drive or buy less when taxed, and asset prices fall when taxed or dumped. Interest savings from seizures assume about 3.5% on paid-down debt. Per-household figures use about 133 million households. Values are for illustration, not official scores.</p>
+  <ul class="src">
+    <li><a href="https://www.cbo.gov/publication/61986">CBO, Monthly Budget Review: FY2026</a></li>
+    <li><a href="https://www.cbo.gov/publication/60557">CBO, Options for Reducing the Deficit 2025–2034</a></li>
+    <li><a href="https://www.crfb.org/blogs/cbos-revenue-savings-options">CRFB, CBO’s revenue options</a></li>
+    <li><a href="https://www.cbo.gov/publication/61882">CBO, Budget and Economic Outlook 2026–2036</a></li>
+    <li><a href="https://www.cato.org/blog/taxing-rich-cant-close-federal-deficit">Cato, IRS data on income above $1M</a></li>
+    <li><a href="https://www.ici.org/statistical-report/ret_26_q2">ICI, US retirement assets Q2 2026</a></li>
+    <li><a href="https://eyeonhousing.org/2026/09/value-of-household-real-estate-assets-approaches-50-trillion/">NAHB on Fed Z.1 household real estate</a></li>
+    <li><a href="https://fred.stlouisfed.org/series/DPSACBM027SBOG">FRED, deposits at commercial banks</a></li>
+    <li><a href="https://www.eia.gov/energyexplained/gasoline/use-of-gasoline.php">EIA, US gasoline use</a></li>
+    <li><a href="https://www.bea.gov/research/papers/2015/new-estimates-value-land-united-states">BEA, value of US land</a></li>
+    <li><a href="https://www.experian.com/automotive/auto-market-trends-webinar-form">Experian, vehicles in operation</a></li>
+    <li><a href="https://eyeonhousing.org/2026/04/count-of-second-homes-declines-in-2024/">NAHB, count of second homes</a></li>
+  </ul></details>
+</div></section>
+<script>
+{
+const OUT=[['ss','Social Security',1654],['mcare','Medicare',1069],['mcaid','Medicaid',723],['def','Defense',917],['int','Net interest',1142],['oth','Everything else',1891]];
+const REV=[['ind','Income tax',2846],['pay','Payroll tax',1812],['corp','Corporate',381],['cust','Tariffs',173],['roth','Other',191]];
+const OUT0=7396,REV0=5403,DEBT=40547,PUB=32765,HH=133e6;
+const f=b=>{const a=Math.abs(b),s=b<0?'−':'';return a>=1000?s+'$'+(a/1000).toFixed(2).replace(/\.?0+$/,'')+'T':s+'$'+Math.round(a)+'B'};
+const pc=x=>x+'%';
+const D=[
+ {id:'ss',g:'spend',k:'r',max:30,step:1,fmt:pc,label:'Cut Social Security benefits',note:'$1.65T a year. When the trust fund runs dry in the 2030s, benefits drop roughly 20–25% automatically.'},
+ {id:'cpi',g:'spend',k:'c',label:'Slower cost-of-living raises (chained CPI)',note:'Smaller yearly increases for Social Security and other benefits. About $20B a year at first, growing over time.'},
+ {id:'mcare',g:'spend',k:'r',max:30,step:1,fmt:pc,label:'Cut Medicare',note:'$1.07T a year, net of premiums. Cuts usually come as lower payments to doctors and hospitals.'},
+ {id:'mcaid',g:'spend',k:'r',max:30,step:1,fmt:pc,label:'Cut federal Medicaid',note:'$723B a year. States would have to cut coverage or make up the difference.'},
+ {id:'def',g:'spend',k:'r',max:50,step:1,fmt:pc,label:'Cut defense',note:'$917B a year. CBO’s option to cut about $1T over 10 years is roughly 10%.'},
+ {id:'aid',g:'spend',k:'c',label:'Eliminate all foreign aid',note:'Roughly $40–60B a year, under 1% of spending.'},
+ {id:'ed',g:'spend',k:'c',label:'Abolish the Department of Education',note:'About $80B a year in a normal year. Realistic: Pell grants, Title I and special-ed aid move to other agencies, so little is actually saved.'},
+ {id:'imp',g:'spend',k:'c',label:'Recover half of improper payments',note:'GAO counted $162B in FY2024. Realistic: most are paperwork errors, some are underpayments, and little can be clawed back.'},
+ {id:'oth',g:'spend',k:'r',max:50,step:1,fmt:pc,label:'Cut everything else',note:'$1.89T: veterans, food aid, federal pensions, highways, science, the FBI, national parks, courts and more.'},
+ {id:'inc',g:'tax',k:'r',max:10,step:1,fmt:x=>'+'+x+' pts',label:'Raise every income tax bracket',note:'CBO: about $119B a year per percentage point.'},
+ {id:'top',g:'tax',k:'c',label:'Restore the 39.6% top rate',note:'For roughly $400K+ earners. About $20B a year.'},
+ {id:'cap',g:'tax',k:'c',label:'Lift the Social Security wage cap',note:'Apply the 12.4% payroll tax to all wages. CBO: about $143B a year.'},
+ {id:'pay',g:'tax',k:'r',max:5,step:1,fmt:x=>'+'+x+' pts',label:'New payroll tax on all earnings',note:'CBO: about $127B a year per point, paid by every worker.'},
+ {id:'corp',g:'tax',k:'r',max:14,step:1,fmt:x=>(21+x)+'%',label:'Raise the corporate rate',note:'21% today. CBO: about $14B a year per point.'},
+ {id:'vat',g:'tax',k:'c',label:'5% national sales tax (VAT)',note:'CBO: $338B a year on a broad base, $218B if food, housing and health are exempt (realistic).'},
+ {id:'hlth',g:'tax',k:'c',label:'Cap the tax break for job-based health insurance',note:'Limit it to the median premium. CBO: about $97B a year.'},
+ {id:'item',g:'tax',k:'c',label:'Limit itemized deductions to 15% value',note:'About $200B a year (CBO, via CRFB).'},
+ {id:'carbon',g:'tax',k:'c',label:'Carbon tax, $25 a ton',note:'Roughly $100B a year; raises gas about 22¢ a gallon.'},
+ {id:'cg',g:'tax',k:'c',label:'Raise capital gains rates 2 points',note:'CBO: about $11B a year.'},
+ {id:'wealth',g:'tax',k:'c',label:'Wealth tax: 2% above $50M, 3% above $1B',note:'Backers estimate $275B a year; critics expect far less (realistic: $100B). Its constitutionality is disputed.'},
+ {id:'gas',g:'tax',k:'r',max:1500,step:5,fmt:x=>'+$'+(x/100).toFixed(2)+'/gal',label:'Raise the federal gas tax',note:'18.4¢ today, on 136.5B gallons a year. Realistic: people drive less and buy EVs as the price climbs.'},
+ {id:'conf',g:'wild',k:'radio',label:'95% tax on income above…',opts:[['none','No'],['m1','$1 million'],['k500','$500,000']],note:'About $1.7T of income sits above $1M and $2.3T above $500K; those filers already pay ~30%. Realistic: at a 95% rate high earners stop selling assets, defer pay and report far less.'},
+ {id:'home',g:'wild',k:'r',max:6,step:.25,fmt:x=>x+'% a year',label:'Federal tax on home values',note:'On $49.8T of owner-occupied homes; adds to local property tax (~1%). Realistic: home prices fall as the tax gets priced in.',flag:'Likely unconstitutional (unapportioned direct tax).'},
+ {id:'lvt',g:'wild',k:'r',max:8,step:.25,fmt:x=>x+'% a year',label:'Georgist land value tax',note:'On roughly $50T of private land (estimates run $40–60T). Realistic: land prices fall, so revenue tops out near total land rent, about $2.5T. Overlaps with the home tax.',flag:'Same constitutional problem.'},
+ {id:'sRet',g:'seize',k:'c',label:'Seize every retirement account',note:'$51.2T on paper (ICI). Realistic ~$20T: fire-sale prices, federal pension funds already hold Treasuries, and deferred taxes are already owed.'},
+ {id:'sBank',g:'seize',k:'c',label:'Seize every bank account',note:'About $20T on paper. Banks lend deposits out and hold only about $3–4T in cash and reserves (realistic $3.5T).'},
+ {id:'sHome',g:'seize',k:'c',label:'Seize every home beyond the one you live in',note:'About $9T in second homes and rentals owned by individuals. Realistic ~$5T after prices crash.'},
+ {id:'sCar',g:'seize',k:'c',label:'Seize every private vehicle',note:'About 300M vehicles worth roughly $3.5T. Realistic ~$1.5T after flooding the used market.'}
+];
+const BASE={mode:'paper',conf:'none'};D.forEach(d=>{if(d.k==='r')BASE[d.id]=0;if(d.k==='c')BASE[d.id]=false});
+const PRE={
+ trad:{def:10,oth:10,cpi:true,imp:true,inc:2,cap:true,hlth:true,carbon:true,corp:4},
+ cuts:{ss:20,mcare:20,mcaid:20,def:20,oth:20,aid:true,ed:true},
+ taxes:{inc:10,pay:5,vat:true,cap:true,corp:14,wealth:true,top:true,item:true},
+ wild:{conf:'k500',gas:1465,home:4,lvt:4,sRet:true,sBank:true},
+ none:{}
+};
+let st;
+try{st=JSON.parse(localStorage.getItem('gapfix3'))}catch(e){}
+st=Object.assign({},BASE,st||{});
+const ctl=d=>{
+ if(d.k==='c')return `<label class="opt chk" id="o-${d.id}"><input type="checkbox" id="${d.id}"><span class="ol"><span>${d.label}</span><span class="v" id="v-${d.id}"></span></span><span class="note">${d.note}${d.flag?` <span class="flag">${d.flag}</span>`:''}</span></label>`;
+ if(d.k==='radio')return `<div class="opt" id="o-${d.id}"><div class="ol"><span>${d.label}</span><span class="v" id="v-${d.id}"></span></div><div class="radio" role="radiogroup">${d.opts.map(o=>`<label><input type="radio" name="${d.id}" id="${d.id}-${o[0]}" value="${o[0]}"><span>${o[1]}</span></label>`).join('')}</div><span class="note">${d.note}</span></div>`;
+ return `<div class="opt" id="o-${d.id}"><label class="ol" for="${d.id}"><span>${d.label}</span><span class="v" id="v-${d.id}"></span></label><input type="range" id="${d.id}" min="0" max="${d.max}" step="${d.step}"><span class="note">${d.note}${d.flag?` <span class="flag">${d.flag}</span>`:''}</span></div>`;
+};
+['spend','tax','wild','seize'].forEach(g=>{const p=document.getElementById('g-'+g),h=D.filter(d=>d.g===g).map(ctl).join(''),dbt=document.getElementById('debt');if(g==='seize')dbt.insertAdjacentHTML('beforebegin',h);else p.insertAdjacentHTML('beforeend',h)});
+const calc=()=>{
+ const P=st.mode==='paper',v={};
+ v.cpi=st.cpi?20:0;v.ss=(1654-v.cpi)*st.ss/100;v.mcare=1069*st.mcare/100;v.mcaid=723*st.mcaid/100;v.def=917*st.def/100;
+ v.aid=st.aid?50:0;v.ed=st.ed?(P?80:15):0;v.imp=st.imp?(P?81:20):0;
+ const items=v.aid+v.ed+v.imp;v.oth=(1891-items)*st.oth/100;
+ v.inc=119*st.inc*(P?1:1-.02*st.inc);v.top=st.top?(P?20:18):0;v.cap=st.cap?(P?143:125):0;
+ v.pay=127*st.pay*(P?1:1-.03*st.pay);v.corp=13.6*st.corp*(P?1:1-.035*st.corp);
+ v.vat=st.vat?(P?338:218):0;v.hlth=st.hlth?(P?97:90):0;v.item=st.item?(P?200:180):0;v.carbon=st.carbon?(P?100:90):0;
+ v.cg=st.cg?(P?11:8):0;v.wealth=st.wealth?(P?275:100):0;
+ const t=st.gas/100;v.gas=t*136.5*(P?1:Math.pow(3.1/(3.1+t),.4));
+ v.conf=st.conf==='m1'?(P?1150:200):st.conf==='k500'?(P?1600:300):0;
+ const h=st.home/100;v.home=h*49800*(P?1:.06/(.06+h));
+ const l=st.lvt/100;v.lvt=l*50000*(P?1:.05/(.05+l));
+ v.sRet=st.sRet?(P?51200:20000):0;v.sBank=st.sBank?(P?20000:3500):0;v.sHome=st.sHome?(P?9000:5000):0;v.sCar=st.sCar?(P?3500:1500):0;
+ const seized=v.sRet+v.sBank+v.sHome+v.sCar,intSave=Math.min(Math.min(seized,PUB)*.035,1142);
+ const cutBy={ss:v.cpi+v.ss,mcare:v.mcare,mcaid:v.mcaid,def:v.def,int:intSave,oth:items+v.oth};
+ const sum=g=>D.filter(d=>d.g===g).reduce((a,d)=>a+(v[d.id]||0),0);
+ const cuts=sum('spend'),newRev=sum('tax')+sum('wild');
+ const out=OUT0-cuts-intSave,rev=REV0+newRev;
+ return {v,cutBy,cuts,newRev,intSave,seized,out,rev,gap:out-rev};
+};
+const $=id=>document.getElementById(id);
+const sync=()=>{D.forEach(d=>{if(d.k==='c')$(d.id).checked=!!st[d.id];else if(d.k==='r')$(d.id).value=st[d.id];else $(d.id+'-'+st[d.id]).checked=true});$('mPaper').setAttribute('aria-pressed',st.mode==='paper');$('mReal').setAttribute('aria-pressed',st.mode==='real')};
+const gray=['86','72','60','48','24','36'],blu=['58','44','34','26','20'];
+const render=()=>{
+ const r=calc(),gap0=OUT0-REV0;
+ D.forEach(d=>{const val=r.v[d.id]||0,on=d.k==='c'?!!st[d.id]:d.k==='radio'?st[d.id]!=='none':st[d.id]>0;
+  const set=d.k==='r'?d.fmt(st[d.id])+' · ':'';$('v-'+d.id).textContent=on?set+f(val):(d.k==='r'?d.fmt(0):'—');$('o-'+d.id).classList.toggle('on',on)});
+ const S=Math.max(8000,Math.ceil(Math.max(OUT0,r.rev)/2000)*2000),w=x=>Math.max(0,x)/S*100+'%';
+ $('outBar').innerHTML=OUT.map((c,i)=>`<div style="width:${w(c[2]-r.cutBy[c[0]])};background:color-mix(in srgb,var(--ink) ${gray[i]}%,var(--bg))" title="${c[1]}"></div>`).join('')+`<div class="cut" style="width:${w(r.cuts+r.intSave)}" title="Cut"></div>`;
+ $('outLeg').innerHTML=OUT.map((c,i)=>`<span><i style="background:color-mix(in srgb,var(--ink) ${gray[i]}%,var(--bg))"></i>${c[1]} <b>${f(c[2]-r.cutBy[c[0]])}</b></span>`).join('')+(r.cuts+r.intSave>0?`<span><i class="cut"></i>Cut <b>${f(r.cuts+r.intSave)}</b></span>`:'');
+ $('revBar').innerHTML=REV.map((c,i)=>`<div style="width:${w(c[2])};background:color-mix(in srgb,var(--slate) ${blu[i]}%,var(--bg))" title="${c[1]}"></div>`).join('')+`<div style="width:${w(r.newRev)};background:var(--slate)" title="New taxes"></div><div class="gap" style="width:${w(r.gap)}" title="Gap"></div>`;
+ $('revLeg').innerHTML=REV.map((c,i)=>`<span><i style="background:color-mix(in srgb,var(--slate) ${blu[i]}%,var(--bg))"></i>${c[1]} <b>${f(c[2])}</b></span>`).join('')+(r.newRev>0?`<span><i style="background:var(--slate)"></i>New taxes <b>${f(r.newRev)}</b></span>`:'')+(r.gap>0?`<span><i class="gap"></i>Gap <b>${f(r.gap)}</b></span>`:`<span>Surplus <b>${f(-r.gap)}</b></span>`);
+ let ax='';for(let x=0;x<=S;x+=2000)ax+=`<span style="left:${x/S*100}%">${x?'$'+x/1000+'T':'0'}</span>`;$('axis').innerHTML=ax;
+ $('outT').textContent=f(r.out);$('revT').textContent=f(r.rev);
+ const closed=Math.min(100,Math.max(0,(gap0-r.gap)/gap0*100));
+ $('big').textContent=f(Math.abs(r.gap));$('big').classList.toggle('ok',r.gap<=0);
+ $('bigL').textContent=r.gap>0?'still to close each year':'surplus each year';
+ $('sGap').textContent=r.gap>0?f(r.gap)+' short':'Balanced';
+ $('sPct').textContent=r.gap>0?`· ${Math.round(closed)}% of the gap closed`:`· ${f(-r.gap)} to spare`;
+ $('meter').style.width=closed+'%';
+ const hh=r.newRev*1e9/HH;
+ $('chips').innerHTML=`<span>Spending cuts <b>${f(r.cuts)}</b></span><span>New taxes <b>${f(r.newRev)}</b></span><span>Interest saved <b>${f(r.intSave)}</b></span><span>New taxes per household <b>$${Math.round(hh).toLocaleString()} a year</b></span>`;
+ const after=DEBT-r.seized;
+ $('debt').innerHTML=r.seized?`Seizing <b>${f(r.seized)}</b> takes the debt from <b>$40.5T</b> to <b>${after>0?f(after):'zero'}</b>${after<0?` with ${f(-after)} left over`:''}, and saves about <b>${f(r.intSave)}</b> a year in interest. `+(r.gap>0?`At the remaining gap, the debt is back to $40.5T in about <b>${Math.max(1,Math.round(r.seized/r.gap))} years</b>, with nothing left to seize.`:'With the yearly gap closed, it stays down.'):`The debt is <b>$40.5T</b> (Nov 2026). Pick a seizure to see how long it lasts.`;
+ $('modeNote').textContent=st.mode==='paper'?'Paper math: assumes nobody changes behavior. This is the most generous case for every tax.':'Realistic: people and markets react. Taxed activity shrinks and dumped assets sell for less.';
+ try{localStorage.setItem('gapfix3',JSON.stringify(st))}catch(e){}
+};
+D.forEach(d=>{
+ if(d.k==='radio')d.opts.forEach(o=>$(d.id+'-'+o[0]).addEventListener('change',()=>{st[d.id]=o[0];render()}));
+ else $(d.id).addEventListener(d.k==='c'?'change':'input',e=>{st[d.id]=d.k==='c'?e.target.checked:+e.target.value;render()});
+});
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{st.mode=b.dataset.m;sync();render()}));
+document.querySelectorAll('.pre button[data-p]').forEach(b=>b.addEventListener('click',()=>{st=Object.assign({},BASE,{mode:st.mode},PRE[b.dataset.p]);sync();render()}));
+$('copy').addEventListener('click',()=>{
+ const r=calc(),lines=D.filter(d=>(r.v[d.id]||0)>0).map(d=>`• ${d.label}${d.k==='r'?' ('+d.fmt(st[d.id])+')':d.k==='radio'?' '+d.opts.find(o=>o[0]===st.conf)[1]:''}: ${f(r.v[d.id])}`);
+ const txt=`My plan for the $2.0T deficit (${st.mode==='paper'?'paper math':'realistic'}):\n${lines.join('\n')||'• Nothing yet'}\nResult: ${r.gap>0?f(r.gap)+' still short':'balanced, '+f(-r.gap)+' surplus'}. New taxes per household: $${Math.round(r.newRev*1e9/HH).toLocaleString()} a year.`;
+ navigator.clipboard.writeText(txt).then(()=>{$('copy').textContent='Copied'},()=>{$('copy').textContent='Copy failed'}).finally(()=>setTimeout(()=>{$('copy').textContent='Copy my plan'},1800));
+});
+sync();render();
+}
+</script>
+</body></html>
